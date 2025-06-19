@@ -1,0 +1,33 @@
+# Xcode
+DerivedData/
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+
+# SwiftPM
+/.swiftpm/
+Package.resolved
+
+# Cocoapods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Xcode 11+
+*.xcuserstate
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Misc
+.DS_Store
+

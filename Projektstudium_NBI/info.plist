@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Diese App nutzt das lokale Netzwerk, um Geräte in der Nähe zu verbinden</string>
+	<key>Privacy - Local Network Usage Description</key>
+	<string>This app requires local network service. Supply a value for this string to explain how the user benefits when they allow the app to access local network service.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_nbi-demo._udp</string>
+		<string>_nbi-demo._tcp</string>
+	</array>
+</dict>
+</plist>
