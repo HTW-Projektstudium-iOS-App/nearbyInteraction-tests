@@ -2,6 +2,7 @@ import Foundation
 import MultipeerConnectivity
 import NearbyInteraction
 import os
+import Combine
 
 class MultipeerManager: NSObject, ObservableObject {
     private let serviceType = "nbi-demo"
@@ -17,6 +18,8 @@ class MultipeerManager: NSObject, ObservableObject {
     @Published var receivedPeerName: String = "Noch nichts empfangen"
     @Published var isConnected: Bool = false
     @Published var distance: Float?
+    
+    private var cancellables = Set<AnyCancellable>()
 
     override init() {
         super.init()
@@ -34,6 +37,21 @@ class MultipeerManager: NSObject, ObservableObject {
 
         niSession = NISession()
         niSession.delegate = self
+        
+        $distance
+            .sink { [weak self] optionalValue in
+                guard let value = optionalValue else { return }
+                if value < 0.05 {
+                    self?.triggerAction()
+                }
+            }
+            .store(in: &cancellables)
+
+    }
+    
+    private func triggerAction() {
+            print("Abstand kleiner als 0.5 Meter – Aktion ausgelöst!")
+            // Hier deine gewünschte Methode oder Logik
     }
 
     func sendOwnPeerID() {

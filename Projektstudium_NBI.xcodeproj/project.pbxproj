@@ -29,9 +29,22 @@
 		AF8BEAAD2DEB54AD0055E9ED /* Projektstudium_NBIUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Projektstudium_NBIUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AF9139F92E119AC0009D9C88 /* Exceptions for "Projektstudium_NBI" folder in "Projektstudium_NBI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AF8BEA922DEB54AB0055E9ED /* Projektstudium_NBI */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AF8BEA952DEB54AB0055E9ED /* Projektstudium_NBI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AF9139F92E119AC0009D9C88 /* Exceptions for "Projektstudium_NBI" folder in "Projektstudium_NBI" target */,
+			);
 			path = Projektstudium_NBI;
 			sourceTree = "<group>";
 		};
