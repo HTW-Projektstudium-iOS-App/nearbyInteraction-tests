@@ -15,10 +15,15 @@ class MultipeerManager: NSObject, ObservableObject {
     private var niSession: NISession!
     private var peerDiscoveryToken: NIDiscoveryToken?
 
+
     @Published var receivedPeerName: String = "Noch nichts empfangen"
     @Published var isConnected: Bool = false
     @Published var distance: Float?
     
+
+    private var stableTimer: Timer?
+    private var isInTargetRange = false
+    private var hasSentPeerID = false
     private var cancellables = Set<AnyCancellable>()
 
     override init() {
@@ -37,22 +42,38 @@ class MultipeerManager: NSObject, ObservableObject {
 
         niSession = NISession()
         niSession.delegate = self
-        
+
+        // 📡 Distance-Überwachung
         $distance
+            .receive(on: RunLoop.main)
             .sink { [weak self] optionalValue in
-                guard let value = optionalValue else { return }
+                guard let self = self, let value = optionalValue else {
+                    self?.cancelStableTimer()
+                    return
+                }
+
                 if value < 0.05 {
-                    self?.triggerAction()
+                    if !self.isInTargetRange {
+                        self.isInTargetRange = true
+                        self.startStableTimer()
+                    }
+                } else {
+                    self.isInTargetRange = false
+                    self.cancelStableTimer()
                 }
             }
             .store(in: &cancellables)
-
     }
+
     
     private func triggerAction() {
-            print("Abstand kleiner als 0.5 Meter – Aktion ausgelöst!")
-            // Hier deine gewünschte Methode oder Logik
+        guard !hasSentPeerID else { return } // Nur ausführen, wenn noch nicht gesendet
+        hasSentPeerID = true
+
+        print("Abstand 2 Sekunden im Zielbereich → Peer-ID wird gesendet")
+        sendOwnPeerID()
     }
+
 
     func sendOwnPeerID() {
         guard !session.connectedPeers.isEmpty else { return }
@@ -61,6 +82,21 @@ class MultipeerManager: NSObject, ObservableObject {
             try? session.send(data, toPeers: session.connectedPeers, with: .reliable)
         }
     }
+    
+    
+    private func startStableTimer() {
+        stableTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+            guard let self = self, self.isInTargetRange else { return }
+            self.triggerAction()
+        }
+    }
+
+    private func cancelStableTimer() {
+        stableTimer?.invalidate()
+        stableTimer = nil
+    }
+
+    
 
     private func sendDiscoveryToken() {
         guard let token = niSession.discoveryToken else { return }
@@ -84,8 +120,8 @@ extension MultipeerManager: MCSessionDelegate {
         DispatchQueue.main.async {
             self.isConnected = state == .connected
             if self.isConnected {
-                self.sendOwnPeerID()
                 self.sendDiscoveryToken()
+                self.hasSentPeerID = false
             }
         }
     }
