@@ -14,6 +14,10 @@ class MultipeerManager: NSObject, ObservableObject {
     
     private var niSession: NISession!
     private var peerDiscoveryToken: NIDiscoveryToken?
+    
+    
+    private var peerDiscoveryTokens: [MCPeerID: NIDiscoveryToken] = [:]
+    private var distances: [MCPeerID: Float] = [:]
 
 
     @Published var receivedPeerName: String = "Noch nichts empfangen"
@@ -44,25 +48,27 @@ class MultipeerManager: NSObject, ObservableObject {
         niSession.delegate = self
 
         // 📡 Distance-Überwachung
-        $distance
-            .receive(on: RunLoop.main)
-            .sink { [weak self] optionalValue in
-                guard let self = self, let value = optionalValue else {
-                    self?.cancelStableTimer()
-                    return
-                }
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+                    guard let self = self else { return }
 
-                if value < 0.05 {
-                    if !self.isInTargetRange {
-                        self.isInTargetRange = true
-                        self.startStableTimer()
+                    if let nearestDistance = self.distances.min(by: { $0.value < $1.value })?.value {
+                        self.distance = nearestDistance
+                        
+
+                        if nearestDistance < 0.05 {
+                            if !self.isInTargetRange {
+                                self.isInTargetRange = true
+                                self.startStableTimer()
+                            }
+                        } else {
+                            self.isInTargetRange = false
+                            self.cancelStableTimer()
+                        }
+                    } else {
+                        self.isInTargetRange = false
+                        self.cancelStableTimer()
                     }
-                } else {
-                    self.isInTargetRange = false
-                    self.cancelStableTimer()
                 }
-            }
-            .store(in: &cancellables)
     }
 
     
@@ -76,11 +82,14 @@ class MultipeerManager: NSObject, ObservableObject {
 
 
     func sendOwnPeerID() {
-        guard !session.connectedPeers.isEmpty else { return }
-        let name = myPeerID.displayName
-        if let data = name.data(using: .utf8) {
-            try? session.send(data, toPeers: session.connectedPeers, with: .reliable)
-        }
+        guard !distances.isEmpty else { return }
+                if let nearest = distances.min(by: { $0.value < $1.value })?.key {
+                    let name = myPeerID.displayName
+                    if let data = name.data(using: .utf8) {
+                        try? session.send(data, toPeers: [nearest], with: .reliable)
+                        print("Peer-ID an nächsten Peer gesendet: \(nearest.displayName)")
+                    }
+                }
     }
     
     
@@ -112,6 +121,10 @@ class MultipeerManager: NSObject, ObservableObject {
         let config = NINearbyPeerConfiguration(peerToken: token)
         niSession.run(config)
     }
+    
+    private func peerID(for token: NIDiscoveryToken) -> MCPeerID? {
+        return peerDiscoveryTokens.first(where: { $0.value == token })?.key
+    }
 }
 
 // MARK: - MCSessionDelegate
@@ -139,7 +152,7 @@ extension MultipeerManager: MCSessionDelegate {
         do {
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
                 DispatchQueue.main.async {
-                    self.peerDiscoveryToken = token
+                    self.peerDiscoveryTokens[peerID] = token
                     self.setupNearbyInteraction(with: token)
                 }
             }
@@ -172,24 +185,29 @@ extension MultipeerManager: MCNearbyServiceBrowserDelegate, MCNearbyServiceAdver
 // MARK: - NISessionDelegate
 extension MultipeerManager: NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        guard let nearbyObject = nearbyObjects.first else { return }
-        DispatchQueue.main.async {
-            self.distance = nearbyObject.distance
+        for object in nearbyObjects {
+            let token = object.discoveryToken
+            guard let peer = peerDiscoveryTokens.first(where: { $0.value == token })?.key else { continue }
+            guard let dist = object.distance else { continue }
+            
+            DispatchQueue.main.async {
+                self.distances[peer] = dist
+            }
+        }
+        
+        func session(_ session: NISession, didInvalidateWith error: Error) {
+            print("NI Session invalidiert: \(error.localizedDescription)")
+        }
+        
+        func sessionWasSuspended(_ session: NISession) {
+            print("NI Session wurde pausiert.")
+        }
+        
+        func sessionSuspensionEnded(_ session: NISession) {
+            if let token = peerDiscoveryToken {
+                setupNearbyInteraction(with: token)
+            }
         }
     }
-
-    func session(_ session: NISession, didInvalidateWith error: Error) {
-        print("NI Session invalidiert: \(error.localizedDescription)")
-    }
-
-    func sessionWasSuspended(_ session: NISession) {
-        print("NI Session wurde pausiert.")
-    }
-
-    func sessionSuspensionEnded(_ session: NISession) {
-        if let token = peerDiscoveryToken {
-            setupNearbyInteraction(with: token)
-        }
-    }
+    
 }
-
